@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlayBank AI Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #c3ff00;
+            --bg: #0a0a0a;
+            --surface: #151515;
+            --glass: rgba(255, 255, 255, 0.05);
+            --red: #ff4d4d;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: white;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 430px;
+            min-height: 100vh;
+            background: var(--bg);
+            padding: 24px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* View Management */
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header & Welcome */
+        .welcome-section { margin-bottom: 30px; padding-top: 10px; }
+        .welcome-section h1 { font-size: 1.6rem; margin: 5px 0; font-weight: 800; }
+
+        /* Hero Card Editable */
+        .hero-card {
+            background: linear-gradient(135deg, #1a1a1a, #000);
+            border-radius: 30px;
+            padding: 30px;
+            border: 1px solid var(--glass);
+            text-align: center;
+            margin-bottom: 25px;
+            transition: 0.3s;
+        }
+        .hero-card:hover { border-color: var(--primary); }
+
+        .balance-label { font-size: 0.75rem; opacity: 0.5; letter-spacing: 1px; }
+        
+        .editable-balance {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 10px 0;
+            color: var(--primary);
+            cursor: pointer;
+            display: inline-block;
+            transition: 0.2s;
+        }
+        .editable-balance:hover { opacity: 0.8; transform: scale(1.05); }
+
+        /* AI Assistant Bar */
+        .ai-assistant {
+            background: var(--glass);
+            padding: 15px 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 30px;
+            border: 1px dashed rgba(195, 255, 0, 0.3);
+        }
+        .ai-avatar { font-size: 1.5rem; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+        /* Bento Menu */
+        .bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .bento-item {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 25px;
+            border: 1px solid var(--glass);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .bento-item:active { transform: scale(0.95); }
+
+        /* Input Styles */
+        .input-box {
+            width: 100%;
+            background: #000;
+            border: 2px solid #222;
+            padding: 15px;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .btn-action {
+            background: var(--primary);
+            color: black;
+            border: none;
+            padding: 18px;
+            border-radius: 15px;
+            width: 100%;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* Modal Overlay */
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98); display: none;
+            flex-direction: column; align-items: center; padding: 40px 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div id="homeView" class="view active">
+        <div class="welcome-section">
+            <span id="timeGreeting" style="opacity: 0.5; font-size: 0.9rem;">Selamat Pagi,</span>
+            <h1>Tondini Alief 🥂</h1>
+        </div>
+
+        <div class="hero-card">
+            <span class="balance-label">KLIK UNTUK EDIT SALDO ✏️</span><br>
+            <div class="editable-balance" id="displayBalance" onclick="editBalance()">Rp 0</div>
+            <div style="font-size: 0.7rem; opacity: 0.4;">Tap angka untuk menyesuaikan saldo manual</div>
+        </div>
+
+        <div class="ai-assistant">
+            <div class="ai-avatar">🤖</div>
+            <div style="font-size: 0.85rem;" id="aiBubble">Halo! Kasih gue data cuan lo biar gue bisa kasih feedback slay.</div>
+        </div>
+
+        <div class="bento-grid">
+            <div class="bento-item" onclick="openView('in')">
+                <span style="font-size: 1.2rem;">💰</span><br>
+                <b style="display: block; margin-top: 10px;">Dapet Cuan</b>
+                <small style="opacity: 0.5;">Income</small>
+            </div>
+            <div class="bento-item" onclick="openView('out')">
+                <span style="font-size: 1.2rem;">💸</span><br>
+                <b style="display: block; margin-top: 10px;">Bocor Alus</b>
+                <small style="opacity: 0.5;">Expense</small>
+            </div>
+            <div class="bento-item" style="grid-column: span 2; text-align: center; border-color: var(--primary);" onclick="showVibe()">
+                <b>VIBE CHECK & ANALYTICS 📊</b>
+            </div>
+        </div>
+    </div>
+
+    <div id="actionView" class="view">
+        <div onclick="backHome()" style="cursor:pointer; margin-bottom: 20px;">← Back</div>
+        <h2 id="viewTitle">Input</h2>
+        <input type="number" id="amtInput" class="input-box" placeholder="Nominal (Tanpa titik)">
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <b>Pilih Kategori:</b>
+            <span onclick="addCat()" style="color:var(--primary); font-size: 0.8rem; cursor:pointer;">+ Tambah</span>
+        </div>
+        <div id="catContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
+        
+        <button class="btn-action" onclick="saveData()">SAVE LOG 🚀</button>
+    </div>
+</div>
+
+<div id="vibeOverlay" class="overlay">
+    <h2>Financial Insight 🤖</h2>
+    <div style="width: 250px; height: 250px; margin: 20px 0;">
+        <canvas id="myChart"></canvas>
+    </div>
+    <div id="aiLongFeedback" style="background: var(--glass); padding: 20px; border-radius: 20px; font-size: 0.9rem; text-align: center;"></div>
+    <button class="btn-action" style="background: white; margin-top: 20px;" onclick="closeVibe()">Tutup</button>
+</div>
+
+<script>
+    let stats = { balance: 0, in: 0, out: 0 };
+    let mode = 'in';
+    let selectedCat = '';
+    let cats = { in: ['Gaji', 'Bonus', 'Side Hustle'], out: ['Kopi', 'Belanja', 'Makan', 'Bensin'] };
+    let chart = null;
+
+    // Greeting System
+    const hour = new Date().getHours();
+    const greet = hour < 12 ? "Selamat Pagi," : hour < 18 ? "Selamat Siang," : "Selamat Malam,";
+    document.getElementById('timeGreeting').innerText = greet;
+
+    function editBalance() {
+        let newVal = prompt("Masukkan total saldo baru kamu:", stats.balance);
+        if (newVal !== null && !isNaN(newVal)) {
+            stats.balance = parseInt(newVal);
+            updateUI();
+            updateAIBubble();
+        }
+    }
+
+    function openView(m) {
+        mode = m; selectedCat = '';
+        document.getElementById('homeView').classList.remove('active');
+        document.getElementById('actionView').classList.add('active');
+        document.getElementById('viewTitle').innerText = m === 'in' ? 'Input Cuan 💰' : 'Bocor Alus 💸';
+        renderCats();
+    }
+
+    function backHome() {
+        document.getElementById('homeView').classList.add('active');
+        document.getElementById('actionView').classList.remove('active');
+    }
+
+    function renderCats() {
+        const box = document.getElementById('catContainer');
+        box.innerHTML = '';
+        cats[mode].forEach(c => {
+            const d = document.createElement('div');
+            d.style.padding = "15px";
+            d.style.background = selectedCat === c ? "var(--primary)" : "var(--glass)";
+            d.style.color = selectedCat === c ? "black" : "white";
+            d.style.borderRadius = "15px";
+            d.style.textAlign = "center";
+            d.style.cursor = "pointer";
+            d.innerText = c;
+            d.onclick = () => { selectedCat = c; renderCats(); };
+            box.appendChild(d);
+        });
+    }
+
+    function addCat() {
+        let n = prompt("Kategori baru:");
+        if (n) { cats[mode].push(n); renderCats(); }
+    }
+
+    function saveData() {
+        let v = parseInt(document.getElementById('amtInput').value);
+        if (!v || !selectedCat) return alert("Isi data dulu bestie!");
+
+        if (mode === 'in') { stats.balance += v; stats.in += v; }
+        else { stats.balance -= v; stats.out += v; }
+
+        document.getElementById('amtInput').value = '';
+        updateUI();
+        updateAIBubble();
+        backHome();
+    }
+
+    function updateUI() {
+        document.getElementById('displayBalance').innerText = "Rp " + stats.balance.toLocaleString('id-ID');
+    }
+
+    function updateAIBubble() {
+        const bubble = document.getElementById('aiBubble');
+        if (stats.balance <= 0) bubble.innerText = "🚨 DOMPET KRITIS! Berhenti fomo atau lo bakal makan angin.";
+        else if (stats.out > stats.in) bubble.innerText = "🚩 Red flag! Pengeluaran lo lebih kenceng dari cuan.";
+        else bubble.innerText = "✨ Slay! Keuangan lo masih chill. Pertahanin habit hematnya.";
+    }
+
+    function showVibe() {
+        document.getElementById('vibeOverlay').style.display = 'flex';
+        const fb = document.getElementById('aiLongFeedback');
+        const ctx = document.getElementById('myChart').getContext('2d');
+        
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Masuk', 'Keluar'],
+                datasets: [{ data: [stats.in, stats.out], backgroundColor: ['#c3ff00', '#ff4d4d'], borderWidth: 0 }]
+            },
+            options: { plugins: { legend: { display: false } } }
+        });
+
+        let ratio = stats.out / (stats.in || 1);
+        if (ratio > 0.8) fb.innerText = "Analisis AI: Kondisi dompet lo lagi 'burnout'. Terlalu banyak bocor alus di jajan. Mending cut-off budget hiburan minggu ini.";
+        else fb.innerText = "Analisis AI: Portfolio lo masih 'slay'. Saldo aman buat ditabung atau investasi ke emas. Keep it up!";
+    }
+
+    function closeVibe() { document.getElementById('vibeOverlay').style.display = 'none'; }
+</script>
+</body>
+</html>
